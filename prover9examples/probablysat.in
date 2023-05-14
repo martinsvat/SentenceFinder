@@ -1,0 +1,6 @@
+set(quiet). 
+
+formulas(sos).
+  all x P(x).
+end_of_list.
+
