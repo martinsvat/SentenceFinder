@@ -1,0 +1,13 @@
+# starting search with setup:	0.25.21	SentenceSetup{maxLayers=1000000000, maxClauses=3, maxLiteralsPerClause=4, predicates=[U0/1; B0/2], variables=[x; y], statesStoring=false, quantifiers=true, identityFilter=true, prover9Path=null, symmetryFlip=true, cellGraphPath=null, debug=false, cliffhangerFilter=true, juliaThreads=1, connectedComponents=true, naiveTautology=true, tautologyFilter=true, contradictionFilter=true, thetaReducibility=true, maxK=1, maxCountingClauses=1, maxLiteralsPerCountingClause=1, doubleCountingExist=false, maxProver9Seconds=30, languageBias=true, isoSings=true, isoPredicateNames=true, timeLimit=null}
+# prover9 is  not used, the provided path does not exist
+# cell graph script is  not used, the provided path does not exist
+# starting layer 0 with 1 candidates	
+(V x E y B0(x, y))
+(E x U0(x))
+(E x V y B0(x, y))
+(E x E y B0(x, y))
+(V x E=1 y B0(x, y))
+(E=1 x U0(x))
+(E=1 x V y B0(x, y))
+# ending 0 with 11 candidates	 7 (0)
+# starting layer 1 with 11 candidates	 7 (0)
