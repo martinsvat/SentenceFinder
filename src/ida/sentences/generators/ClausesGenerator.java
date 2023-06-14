@@ -409,6 +409,16 @@ public class ClausesGenerator {
             return val;
         });
     }
+    public JoiningFilter maxOverallLiterals(int l) { // TODO write tests!
+        return new JoiningFilter("MaxOverallLiterals:" + l, (alpha,beta) -> {
+            boolean val = alpha.countLiterals() + beta.literals().size() <= l;
+            if (useLogger && !val) {
+                log(alpha, beta, "MaxOverallLiterals");
+            }
+            return val;
+        });
+    }
+
 
     // this is not the nicest implementation every
     // in order not to add two same clauses into a sentence ;)

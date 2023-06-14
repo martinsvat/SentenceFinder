@@ -1,3 +1,4 @@
+import ida.cellGraphs.CanonicalFilter;
 import ida.ilp.logic.Clause;
 import ida.ilp.logic.Literal;
 import ida.ilp.logic.Predicate;
@@ -29,6 +30,7 @@ public class Tests {
 
     public static void main(String[] args) {
         // TODO to bo honest, we should clear all caches before invocation of each single test
+
         quantifiersCountsTest();
         quantifiersSuccessorsTest(); // this is really 2-variable specific! with 1 variable it will fail
         quantifiersMirrorTest();
@@ -53,10 +55,34 @@ public class Tests {
         isoVariablesPredicates();
         isoVariablesPredicatesSigns();
         isoVariablesPredicatesSignsDirection();
-//
         ultraCannonic();
 
-        // cell graph is untested (it's just taken from the 0.26.21 version)
+
+        //cannonicCellGraph();
+    }
+
+    // TODO rewrite these test, because those are suited for CellSubGraphBasic but CellSubGraph produces a different canonical form
+    private static void cannonicCellGraph() {
+        SentenceSetup setup = SentenceSetup.createFromCmd();
+        CanonicalFilter filter = CanonicalFilter.create(setup);
+        List<Pair<String, String>> inputAndExpectedOutput = Sugar.list(
+                new Pair<>("W(1, g0), L(n0, 1, 1, g0), G(g0)", "L(0,1,1), W(1)"), // base camp
+                new Pair<>("W(1, g0), L(n1, 1, 1, g0), G(g0)", "L(0,1,1), W(1)"), // node invariant
+                new Pair<>("W(1, g0), L(n0, 1*x1^2, 10*x2^2*x1^1, g0), G(g0)", "L(0,1*0^2,10*0^1*1^2), W(1)"), // weight invariant
+                new Pair<>("W(1, g0), L(n0, 1*x1^2, 10*x2^2*x1^1, g0), G(g0) ; W(-1, g1), L(n0, x0^2, -2, g0), G(g1)", "L(0,1*0^2,-2), W(-1)>L(0,1*1^2,10*1^1*2^2), W(1)"), // weight-disconnected graphs
+                new Pair<>("W(1, g0), E(n1, n2, x2*x1), E(n2, n1, x1*x2), L(n1, 1*x1^1*x2^2, x2, g0), G(g0)", "E(0,1,1*0^1*1^1), E(1,0,1*0^1*1^1), L(0,1*0^1*1^2,1*1^1), W(1)"), // rest of edges
+                new Pair<>("W(1, g0), E(n1, n2, x2*x1), E(n2, n1, x1*x2), L(n1, 1*x1^2*x2^1, x2, g0), G(g0)", "E(0,1,1*0^1*1^1), E(1,0,1*0^1*1^1), L(0,1*0^1*1^2,1*0^1), W(1)"), // decision made by exponents in the L/3 literal
+                new Pair<>("W(1, g0), C(n1, 1, 0, 1, x1), C(n1, 0, 1, 1, x2), G(g0)", "C(0,0,1,1,1*0^1), C(0,1,0,1,1*1^1), W(1)") // C5 test
+        );
+        for (Pair<String, String> test : inputAndExpectedOutput) {
+            String input = test.getR();
+            String expectedOutput = test.getS();
+            String output = filter.toCanonical(input);
+            if (!expectedOutput.equals(output)) {
+                System.out.println("input\t" + input + "\nexpected\t" + expectedOutput + "\nresult\t\t" + output);
+            }
+            assert expectedOutput.equals(output);
+        }
     }
 
     private static void languageBias() {

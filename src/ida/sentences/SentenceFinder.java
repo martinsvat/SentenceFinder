@@ -1,5 +1,7 @@
 package ida.sentences;
 
+import ida.cellGraphs.*;
+import ida.hypergraphIsomorphism.ConcurrentIsoHandler;
 import ida.ilp.logic.*;
 import ida.ilp.logic.quantifiers.Quantifier;
 import ida.ilp.logic.quantifiers.QuantifiersGenerator;
@@ -45,7 +47,10 @@ public class SentenceFinder {
     private final Matching matching = new Matching();
     private final SentenceState emptySentence;
 
-    private final MultiList<Clause, SentenceState> cellGraphs = new MultiList<>(); // this is just a dev tool
+//    private final MultiList<Clause, SentenceState> cellGraphs = new MultiList<>(); // this is just a dev tool
+//    private final MultiList<String, SentenceState> cellGraphsCanonical = new MultiList<>(); // this is just a dev tool
+    private final String BFS = "bfs";
+    private final String DFS = "dfs";
 
     public SentenceFinder(SentenceSetup setup) {
         this.setup = setup;
@@ -62,14 +67,21 @@ public class SentenceFinder {
         this.literals = LiteralsGenerator.generate(setup.variables, setup.predicates); // this important so we have intertwined literals before any other parsing take places!
         this.literals.sort(Comparator.comparing(Literal::toString));
         this.emptySentence = new SentenceState(Sugar.list(), setup);
+
+        if (!BFS.equals(setup.mode) && !DFS.equals(setup.mode)) {
+            throw new IllegalStateException("Unknown mode value: " + setup.mode);
+        }
     }
 
 
     public void loadAndContinueSearch() {
+        if (BFS.equals(setup.mode)) {
+            throw new IllegalStateException("BFS mode does not support load & continue with search.");
+        }
         SentenceState seed = null;
         List<Clause> baseClause = Sugar.list();
         MultiList<Integer, SentenceState> sentences = new MultiList<>();
-        MultiList<IsoClauseWrapper, Clause> cellGraphs = new MultiList<>();
+        CellGraphFilter cellGraphResolver = setup.canonicalCellGraphs ? CanonicalFilter.create(setup) : IsomorphicFilter.create(setup);
 
         boolean generatedAll = false;
         boolean outOfTime = false;
@@ -114,21 +126,7 @@ public class SentenceFinder {
                             String[] split = line.split(";");
                             SentenceState sentence = SentenceState.parse(split[0], this.setup);
                             sentences.put(sentence.countLiterals() - seedLiterals, sentence);
-
-                            Clause cellGraph = Clause.parse(split[split.length - 1], ',', null);
-                            IsoClauseWrapper icw = IsoClauseWrapper.create(cellGraph);
-                            boolean found = false;
-                            for (Clause clause : cellGraphs.get(icw)) {
-                                if (matching.isomorphism(clause, icw.getOriginalClause())) {
-                                    found = true;
-                                    break;
-                                }
-                            }
-                            if (!found) {
-                                cellGraphs.put(icw, icw.getOriginalClause());
-                            }
-
-                            sentence.setCellGraph(cellGraph);
+                            cellGraphResolver.incorporate(sentence, split[split.length - 1]);
                             lastLineComment = false;
                         }
                     }
@@ -167,7 +165,7 @@ public class SentenceFinder {
                     .forEach(sentence -> printSerialization(sentenceToSerialization(sentence), false));
         }
         int maxLevel = sentences.keySet().stream().mapToInt(i -> i).max().orElse(0);
-        generate(seed, baseClause, sentences, cellGraphs, maxLevel + 1);
+        generate(seed, baseClause, sentences, cellGraphResolver, maxLevel + 1);
     }
 
     public void startFromSeed(String seed) {
@@ -179,7 +177,7 @@ public class SentenceFinder {
             printMessage(sentence.toFol(), false, System.err);
         }
         printComment(SEEDS_END);
-        generate(sentence, null, new MultiList<>(), new MultiList<>(), 1);
+        generate(sentence, null, new MultiList<>(), setup.canonicalCellGraphs ? CanonicalFilter.create(setup) : IsomorphicFilter.create(setup), 1);
     }
 
     private void checkSeed(SentenceState sentence, List<Predicate> predicates, List<Variable> variables) {
@@ -232,10 +230,10 @@ public class SentenceFinder {
     }
 
     public void generate() {
-        generate(null, null, new MultiList<>(), new MultiList<>(), 1);
+        generate(null, null, new MultiList<>(), setup.canonicalCellGraphs ? CanonicalFilter.create(setup) : IsomorphicFilter.create(setup), 1);
     }
 
-    public void generate(SentenceState seed, List<Clause> allClauses, MultiList<Integer, SentenceState> sentences, MultiList<IsoClauseWrapper, Clause> cellGraphs, int startLevel) {
+    public void generate(SentenceState seed, List<Clause> allClauses, MultiList<Integer, SentenceState> sentences, CellGraphFilter cellGraphResolver, int startLevel) {
         long startTime = System.nanoTime();
         printComment("there are " + this.quantifiers.size() + " quantifiers and " + this.literals.size() + " literals");
         ClausesGenerator clausesGen = new ClausesGenerator(this.literals, this.quantifiers, this.quantifierSuccessors, this.quantifiersMirrors, PredicateGenerator.generateFollowers(setup.predicates), setup.debug);
@@ -273,14 +271,98 @@ public class SentenceFinder {
             }
         });
 
-        MultiList<Integer, Clause> clausesByLength = new MultiList<>();
-        allClauses.forEach(clause -> clausesByLength.put(clause.countLiterals(), clause));
-        runConnection(sentences, cellGraphs, clausesByLength, getSentenceFilters(clausesGen, this.setup),
-                getJoiningFilters(clausesGen, this.setup), getHideOnlyFilters(clausesGen, this.setup), startLevel, seed,
-                clausesGen);
+        long printedOut = 0l;
+        if (BFS.equals(setup.mode)) {
+            MultiList<Integer, Clause> clausesByLength = new MultiList<>();
+            allClauses.forEach(clause -> clausesByLength.put(clause.countLiterals(), clause));
+            printedOut = runConnection(sentences, cellGraphResolver, clausesByLength, getSentenceFilters(clausesGen, this.setup),
+                    getJoiningFilters(clausesGen, this.setup), getHideOnlyFilters(clausesGen, this.setup), startLevel, seed,
+                    clausesGen);
+        } else if (DFS.equals(setup.mode)) {
+            printedOut = runDFS(allClauses, cellGraphResolver, getSentenceFilters(clausesGen, this.setup),
+                    getJoiningFilters(clausesGen, this.setup), getHideOnlyFilters(clausesGen, this.setup), seed, clausesGen);
+        }
 
-        printComment("ending with " + sentences.entrySet().stream().mapToInt(e -> e.getValue().size()).sum() + " in " + timeToNowInSeconds(startTime));
+        printComment("ending with " + printedOut + " in " + timeToNowInSeconds(startTime));
         printComment(shouldEnd(startTime) ? OUT_OF_TIME_MESSAGE : ENDING_MESSAGE);
+    }
+
+    private long runDFS(List<Clause> clauses, CellGraphFilter cellGraphResolver, List<SingleFilter<SentenceState>> sentenceFilters, List<JoiningFilter> joiningFilters, List<SingleFilter<SentenceState>> hideOnlyFilters, SentenceState seed, ClausesGenerator clausesGenerator) {
+        long start = System.nanoTime();
+        long printedOut = 0l;
+        if (null == seed) {
+            seed = emptySentence;
+        }
+        Set<String> closedList = ConcurrentHashMap.newKeySet();
+        if (!setup.negations || !setup.isomorphicSentences || !setup.permutingArguments || !setup.lexicographicalMatching) {
+            throw new IllegalStateException();
+        }
+        Stack<SentenceState> queue = new Stack<>();
+        queue.add(seed);
+        while (!queue.isEmpty()) {
+            SentenceState node = queue.pop();
+            Stream<SentenceState> refinements = connect(node, clauses, joiningFilters);
+            List<SentenceState> children = refinements.parallel()
+                    .filter(sentence -> sentenceFilters.stream().allMatch(filter -> filter.test(sentence))).toList();
+            int allChildren = children.size();
+            children = children.parallelStream().filter(sentence -> closedList.add(sentence.getUltraCannonic()))
+                    .toList();
+            int afterPruning = children.size();
+
+            if (shouldEnd(start)) {
+                break;
+            }
+
+            if (debug) {
+                debugOutput("after-pruning", children);
+            }
+
+
+            // hiding (e.g. reflexive atoms), cell-graph,...
+            Set<SentenceState> hide = ConcurrentHashMap.newKeySet();
+            children.parallelStream()
+                    .filter(sentence -> !hideOnlyFilters.stream().allMatch(f -> f.test(sentence)))
+                    .forEach(hide::add);
+            resolveCellGraphHiding(children, hide, cellGraphResolver, clausesGenerator);
+
+            if (shouldEnd(start)) {
+                break;
+            }
+
+            if (debug) {
+                debugOutput("after-filtering", children.stream().filter(sentence -> !hide.contains(sentence)).toList());
+            }
+
+
+            int printedChildren = children.size() - hide.size();
+            printedOut += printedChildren;
+            // printing
+            long printingStart = System.nanoTime();
+            children.stream()
+                    .filter(sentence -> !hide.contains(sentence))
+                    .map(SentenceState::getUltraCannonic)
+//                    .map(s -> s.getUltraCannonic() + "\t;\t" + (null == s.getCanonicalCellGraph() ? s.getCellGraph() : s.getCanonicalCellGraph()))
+                    .sorted().forEach(this::printCandidate);
+            Long printing = timeToNowInSeconds(printingStart);
+
+            if (debug) {
+                clausesGenerator.flushLogger();
+            }
+
+            children.stream().sorted(Comparator.comparing(SentenceState::getUltraCannonic).reversed())
+                    .forEach(queue::add);
+            // free memory
+            for (SentenceState sentence : children) {
+                sentence.freeMemory();
+            }
+
+            long nodeTime = timeToNowInSeconds(start);
+            printComment("opened " + printedChildren + " (" + children.size() + " / " + afterPruning + " / " + allChildren +
+                    ") [" + printedOut + "] in " + (nodeTime) + "\t" + node.getUltraCannonic());
+            node.freeMemory();
+
+        }
+        return printedOut;
     }
 
     public Pair<List<Clause>, ClausesGenerator> initForQueries() {
@@ -312,7 +394,7 @@ public class SentenceFinder {
 
     public List<SingleFilter<SentenceState>> getHideOnlyFilters(ClausesGenerator generator, SentenceSetup setup) {
         List<SingleFilter<SentenceState>> retVal = Sugar.list();
-        if (setup.reflexiveAtoms) {
+        if (setup.reflexiveAtoms && BFS.equals(setup.mode)) { // TODO can we move this to safe-to-remove category in clause-wise BFS?
             retVal.add(generator.reflexiveAtoms());
         }
         return retVal;
@@ -329,6 +411,9 @@ public class SentenceFinder {
         }
         if (setup.maxClauses > 0) {
             connectionFilters.add(clausesGen.maxClauses(setup.maxClauses));
+        }
+        if (setup.maxOverallLiterals > 0) {
+            connectionFilters.add(clausesGen.maxOverallLiterals(setup.maxOverallLiterals));
         }
         if (setup.decomposableComponents) {
             connectionFilters.add(clausesGen.connectedComponents());
@@ -350,13 +435,17 @@ public class SentenceFinder {
 
     public List<SingleFilter<SentenceState>> getSentenceFilters(ClausesGenerator clausesGen, SentenceSetup setup) {
         List<SingleFilter<SentenceState>> sentenceFilters = Sugar.list();
+        if (setup.reflexiveAtoms && DFS.equals(setup.mode)) { // TODO is this safe in this mode?
+            sentenceFilters.add(clausesGen.reflexiveAtoms());
+        }
         if (setup.contradictionFilter) {
             sentenceFilters.add(clausesGen.contradictionFilter(null == setup.prover9Path ? null : Paths.get(setup.prover9Path), setup.maxProver9Seconds));
         }
         return sentenceFilters;
     }
 
-    private void runConnection(MultiList<Integer, SentenceState> sentences, MultiList<IsoClauseWrapper, Clause> cellGraphs,
+    // BFS mode
+    private long runConnection(MultiList<Integer, SentenceState> sentences, CellGraphFilter cellGraphFilter,
                                MultiList<Integer, Clause> clausesByLength, List<SingleFilter<SentenceState>> sentenceFilters,
                                List<JoiningFilter> connectionFilters, List<SingleFilter<SentenceState>> hideOnlyFilters,
                                int startLevel, SentenceState seed, ClausesGenerator clausesGenerator) {
@@ -364,10 +453,11 @@ public class SentenceFinder {
         printComment("going to connect clauses with sentence filters: " + makeString(sentenceFilters));
         printComment("going to connect clauses with hide filters: " + makeString(hideOnlyFilters));
         StringBuilder info = new StringBuilder("info: ");
-        StringBuilder isoDistribution = new StringBuilder("iso: ");
+        /*StringBuilder isoDistribution = new StringBuilder("iso: ");
         StringBuilder cellDistribution = new StringBuilder("cells: ");
-        StringBuilder hashDistributions = new StringBuilder("hashes: ");
+        StringBuilder hashDistributions = new StringBuilder("hashes: ");*/
         long start = System.nanoTime();
+        long count = 0l;
 
         for (int layerToFree = 1; layerToFree < startLevel - setup.maxLiteralsPerClause; layerToFree++) { // free memory from search continuing
             sentences.get(layerToFree).clear();
@@ -381,7 +471,7 @@ public class SentenceFinder {
             List<SentenceState> s = Sugar.list();
             sentences.values().forEach(s::addAll);
             List<Clause> cg = Sugar.list();
-            cellGraphs.values().forEach(cg::addAll);
+            cellGraphFilter.values().forEach(cg::addAll);
             printComment("stats " + numberOfLiterals
                     + "\tc " + clausesToHistogram(cls)
                     + "\ts " + sentencesToHistogram(s)
@@ -415,7 +505,7 @@ public class SentenceFinder {
                         .filter(sentence -> iso.add(sentence.getUltraCannonic()))
                         .collect(Collectors.toList());
                 isoTriple = new Triple<>(prunedSentences, "", new Counters<>());
-            } else {
+            } else { // lexicographical filtering is possible only when negations, isomorphic sentences, and permutations are all on
                 isoTriple = isoPruneParallel(layerSentences, clausesGenerator);
             }
             layerSentences = isoTriple.getR();
@@ -442,10 +532,12 @@ public class SentenceFinder {
 
             int hideBeforeCallGraph = hide.size();
 
-            resolveCellGraphHiding(layerSentences, hide, cellGraphs, clausesGenerator);
-            if (setup.collectCellGraphs) { // this is just a dev tool
-                showSameCellGraphs();
-            }
+            resolveCellGraphHiding(layerSentences, hide, cellGraphFilter, clausesGenerator);
+//            if (setup.collectCellGraphs) { // this is just a dev tool
+//                showSameCellGraphs(); // TODO update this
+//            }
+
+
             Long filtering = timeToNowInSeconds(filteringStart);
             int displaySize = layerSentences.size() - hide.size();
             printComment("there are " + (displaySize) + " sentence after filtering within " + filtering);
@@ -459,11 +551,14 @@ public class SentenceFinder {
             }
 
 
+            count += layerSentences.size() - hide.size();
+
             // printing
             long printingStart = System.nanoTime();
             layerSentences.stream()
                     .filter(sentence -> !hide.contains(sentence))
                     .map(SentenceState::getUltraCannonic)
+//                    .map(a -> a.getUltraCannonic() + "\t;\t" + (null == a.getCanonicalCellGraph() ? a.getCellGraph() : a.getCanonicalCellGraph()))
                     .sorted().forEach(this::printCandidate);
             Long printing = timeToNowInSeconds(printingStart);
             if (this.setup.statesStoring) {
@@ -494,20 +589,25 @@ public class SentenceFinder {
                     .append(filtering).append(", ").append(printing).append("]; ");
             printComment(info.toString());
 
+            /*
             isoDistribution.append(" ").append(numberOfLiterals).append(": [").append(isoTriple.getS()).append("]");
             printComment(isoDistribution.toString());
-            cellDistribution.append(" ").append(numberOfLiterals).append(": [").append(toDistribution(cellGraphs)).append("]");
+            cellDistribution.append(" ").append(numberOfLiterals).append(": [").append(toDistribution(cellGraphFilter)).append("]");
             printComment(cellDistribution.toString());
             hashDistributions.append(" ").append(numberOfLiterals)
                     .append(": [").append(histogramToString(isoTriple.getT())).append("]")
-                    .append(" [").append(histogramToString(toCounter(cellGraphs.entrySet()))).append("]");
+                    .append(" [").append(histogramToString(toCounter(cellGraphFilter.entrySet()))).append("]");
             printComment(hashDistributions.toString());
+            */
             if (shouldEnd(start)) {
                 break;
             }
         }
+        return count;
     }
 
+    /*
+    // TODO update this method for canonical CG
     // dev & debug
     private void showSameCellGraphs() {
         cellGraphs.entrySet().stream()
@@ -520,6 +620,7 @@ public class SentenceFinder {
                     System.err.println(connected);
                 });
     }
+    */
 
     // RL-related
     public List<Clause> allRefinements(SentenceState sentence, List<Clause> clauses, List<SingleFilter<SentenceState>> sentenceFilters,
@@ -560,6 +661,11 @@ public class SentenceFinder {
 
 
     private String sentenceToSerialization(SentenceState sentence) {
+        // TODO
+        // based on setup.canonicalCellGraphs print either getCellGraph or getCanonicalCellGraph
+        if (setup.canonicalCellGraphs) {
+            return sentence.getUltraCannonic() + " ; " + sentence.toFol(true) + " ; " + sentence.getCanonicalCellGraph();
+        }
         return sentence.getUltraCannonic() + " ; " + sentence.toFol(true) + " ; " + sentence.getCellGraph();
     }
 
@@ -583,310 +689,81 @@ public class SentenceFinder {
         printMessage(candidate, false, System.out);
     }
 
-    private void resolveCellGraphHiding(List<SentenceState> layerSentences, Set<SentenceState> hide, MultiList<IsoClauseWrapper, Clause> cellGraphs, ClausesGenerator clausesGenerator) {
+    private void resolveCellGraphHiding(List<SentenceState> layerSentences, Set<SentenceState> hide, CellGraphFilter cellGraphFilter, ClausesGenerator clausesGenerator) {
         if (null == setup.cellGraph || !setup.computeCellGraph || layerSentences.isEmpty()) {
             return;
         }
-        fillInCellGraphs(dropComputed(layerSentences));
+        cellGraphFilter.fillInCellGraphs(dropComputed(layerSentences, cellGraphFilter));
 
         // proceed hide as first! then do the same with layerSentence
         // firstly hide what should be hidden
-        forcedInput(hide, cellGraphs);
+        cellGraphFilter.addHiddens(hide);
         // this most likely doesn't need parallelization because the bottleneck is cell-graph computation
-        MultiList<Clause, SentenceState> parents = new MultiList<>();
-        for (SentenceState sentence : layerSentences) {
-            if (hide.contains(sentence)) {
-                continue;
-            }
-            boolean found = false;
-            IsoClauseWrapper icw = IsoClauseWrapper.create(sentence.getCellGraph());
-            for (Clause clause : cellGraphs.get(icw)) {
-                if (matching.isomorphism(clause, icw.getOriginalClause())) {
-                    if (parents.containsKey(clause)) {
-                        if (parents.containsKey(clause)) {
-                            parents.put(clause, sentence);
-                        } else {
-                            if (clausesGenerator.useLogger) {
-                                clausesGenerator.log(sentence, null, "CellGraph-Inter");
-                            }
-                            hide.add(sentence); // this sentence is cell-isomorphic to something with less literals
-                        }
-                        if (setup.collectCellGraphs) { // this is just a dev tool
-                            this.cellGraphs.put(clause, sentence);
-                        }
-                    }
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                cellGraphs.put(icw, icw.getOriginalClause());
-                parents.put(icw.getOriginalClause(), sentence);
-                if (setup.collectCellGraphs) { // this is just a dev tool
-                    this.cellGraphs.put(sentence.getCellGraph(), sentence);
-                }
-            }
-        }
+        Collection<List<SentenceState>> buckets = cellGraphFilter.add(layerSentences, hide, clausesGenerator);
+
+        /*
+        buckets.stream().filter(c -> c.size() > 1)
+
+                .map(c -> "-----------\n" +
+                        c.stream().map(SentenceState::getUltraCannonic).sorted().collect(Collectors.joining("\n")) + "\n" +
+                        c.get(0).getCanonicalCellGraph())
+                .sorted()
+                .forEach(System.out::println);
+        */
 
         // hide non-minimals!
-        parents.values().parallelStream()
-                .filter(values -> values.size() > 1)
-                .forEach(list -> list.stream().sorted(Comparator.comparing(SentenceState::getUltraCannonic))
-                        .skip(1)
-                        .forEach(sentence -> {
-                            if (clausesGenerator.useLogger) {
-                                clausesGenerator.log(sentence, null, "CellGraph-Intra");
-                            }
-                            hide.add(sentence);
-                        }));
-    }
-
-    // TODO parallelize this???
-    private void forcedInput(Set<SentenceState> sentences, MultiList<IsoClauseWrapper, Clause> cellGraphs) {
-        for (SentenceState sentence : sentences) {
-            boolean found = false;
-            IsoClauseWrapper icw = IsoClauseWrapper.create(sentence.getCellGraph());
-            for (Clause clause : cellGraphs.get(icw)) {
-                if (matching.isomorphism(clause, icw.getOriginalClause())) {
-                    found = true;
-                    if (setup.collectCellGraphs) { // this is just a dev tool
-                        this.cellGraphs.put(clause, sentence);
-                    }
-                    break;
-                }
-            }
-            if (!found) {
-                cellGraphs.put(icw, icw.getOriginalClause());
-                if (setup.collectCellGraphs) { // this is just a dev tool
-                    this.cellGraphs.put(sentence.getCellGraph(), sentence);
-                }
-            }
+        if (setup.debug) {
+            buckets.parallelStream()
+                    .filter(values -> values.size() > 1)
+                    .forEach(list -> {
+                        List<SentenceState> l = list.stream().sorted(Comparator.comparing(SentenceState::getUltraCannonic)).toList();
+                        SentenceState reason = l.get(0);
+                        l.subList(1, l.size())
+                                .forEach(sentence -> {
+                                    if (clausesGenerator.useLogger) {
+//                                        clausesGenerator.log(sentence, null, "CellGraph-Intra");
+                                        clausesGenerator.log(sentence, null, "CellGraph-Intra " + (null == reason.getCellGraph() ? reason.getCanonicalCellGraph() : reason.getCellGraph().toString()));
+                                    }
+                                    hide.add(sentence);
+                                });
+                    });
+        } else {
+            buckets.parallelStream()
+                    .filter(values -> values.size() > 1)
+                    .forEach(list -> list.stream().sorted(Comparator.comparing(SentenceState::getUltraCannonic))
+                            .skip(1)
+                            .forEach(sentence -> {
+                                if (clausesGenerator.useLogger) {
+                                    clausesGenerator.log(sentence, null, "CellGraph-Intra");
+                                }
+                                hide.add(sentence);
+                            }));
         }
     }
 
-    private List<SentenceState> dropComputed(List<SentenceState> layerSentences) {
+
+    private List<SentenceState> dropComputed(List<SentenceState> layerSentences, CellGraphFilter resolver) {
         if (null == setup.redisConnection) {
-            System.out.println("E2");
             return layerSentences;
         }
         return layerSentences.stream().filter(sentence -> {
-            String cellGraph = setup.redisConnection.get(sentence.getUltraCannonic());
+            String cellGraph = setup.redisConnection.get(resolver.getPrefix() + sentence.getUltraCannonic());
             if (null == cellGraph) {
                 return true;
             }
-            sentence.setCellGraph(Clause.parse(cellGraph, ',', null));
+            resolver.setUpRedisOutput(sentence, cellGraph);
             return false;
         }).collect(Collectors.toList());
     }
 
-    private void fillInCellGraphs(List<SentenceState> cellGraphQueue) {
-        if (cellGraphQueue.isEmpty()) {
-            return;
-        }
-        try {
-            File file = File.createTempFile("sentences", ".in");
-            StringBuilder sb = new StringBuilder();
-            cellGraphQueue.forEach(sentence -> sb.append(sb.isEmpty() ? "" : "\n").append(sentence.getUltraCannonic()));
-            Files.write(file.toPath(), Sugar.list(sb.toString()));
 
-            ProcessBuilder processBuilder = new ProcessBuilder();
-//            if (setup.juliaSoVersion != null) { // TODO throw this unused version out :))
-//                processBuilder.command("julia", "--sysimage", setup.juliaSoVersion, "--threads", "" + setup.juliaThreads, setup.cellGraphPath, file.getAbsolutePath(), "" + setup.cellTimeLimit);
-//            } else {
-            processBuilder.command("julia", "--threads", "" + setup.juliaThreads, setup.cellGraph, file.getAbsolutePath(), "" + setup.cellTimeLimit);
-
-//            System.out.println("the input is in\t" + file.getAbsolutePath());
-            Process process = processBuilder.start();
-
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line;
-            int addedCellGraphs = 0;
-            while ((line = reader.readLine()) != null) {
-                if (line.startsWith("[")) {
-                    String wholeLine = line;
-                    // parsing a cell-graph
-                    line = line.substring(1, line.length() - 1);
-                    Clause cellGraph = parseCellGraph(cellGraphQueue, processBuilder, line, addedCellGraphs, wholeLine);
-                    SentenceState sentence = cellGraphQueue.get(addedCellGraphs);
-                    sentence.setCellGraph(cellGraph);
-                    if (null != setup.redisConnection) {
-                        setup.redisConnection.set(sentence.getUltraCannonic(), cellGraph.toString());
-                    }
-                    addedCellGraphs++;
-                } else {
-                    printComment("there is an unparseable line from FastWFOMC\t" + line + " ; after parsing " + addedCellGraphs + " cell-graphs");
-                }
-            }
-            if (cellGraphQueue.size() != addedCellGraphs) {
-                System.err.println("Not every single cell-graph was returned from the query!");
-                System.err.println(processBuilder.command());
-                System.err.println(file.getAbsolutePath());
-                System.err.println(sb);
-
-                BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                System.err.println("error from WFOMC");
-                while ((line = errorReader.readLine()) != null) {
-                    System.err.println(line);
-                }
-                throw new IllegalStateException();
-            }
-            int exitCode = process.waitFor();
-            Files.deleteIfExists(file.toPath());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private Clause parseCellGraph(List<SentenceState> cellGraphQueue, ProcessBuilder processBuilder, String line, int addedCellGraphs, String wholeLine) {
-        Clause cellGraph = null;
-        if (line.trim().isEmpty()) {
-            // now, there are only [] meaning the sentence was a contradiction, thus scratching it completely... or it took too much time to compute its cell graph, so prune it from the search anyway
-            cellGraph = Clause.parse("");
-        } else {
-            VariableSupplier sumSupplier = VariableSupplier.create("m");
-            VariableSupplier productSupplier = VariableSupplier.create("p");
-            VariableSupplier weightVariableSupplier = VariableSupplier.create("x");
-            Map<String, Term> expressionCache = new HashMap<>();
-
-            List<Literal> literals = Sugar.list();
-            VariableSupplier variableSupplier = VariableSupplier.create("n");
-            int idx = 0;
-            for (String graph : line.split(";")) {
-                literals.addAll(parseSingleCellGraph(graph, idx, variableSupplier, sumSupplier, productSupplier, weightVariableSupplier, expressionCache, addedCellGraphs, cellGraphQueue, processBuilder, wholeLine));
-                idx++;
-            }
-            if (addedCellGraphs >= cellGraphQueue.size()) {
-                throw new IllegalStateException("Julia's FastWFOMC returned more cell-graphs than we asked for.");
-            }
-
-            cellGraph = new Clause(literals);
-        }
-        return cellGraph;
-    }
-
-    private Collection<? extends Literal> parseSingleCellGraph(String graph, int graphIdx, VariableSupplier
-            variableSupplier, VariableSupplier sumSupplier, VariableSupplier productSupplier,
-                                                               VariableSupplier weightVariableSupplier,
-                                                               Map<String, Term> expressionCache,
-                                                               int addedCellGraphs, List<SentenceState> cellGraphQueue,
-                                                               ProcessBuilder processBuilder, String wholeLine) {
-        List<Literal> literals = Sugar.list();
-        Variable graphVar = Variable.construct("g" + graphIdx);
-        for (Literal literal : Clause.parse(graph, ',', null).literals()) {
-            Literal transofmed = null;
-            if (literal.predicate().startsWith("L")) { // L(x3, 4, 1)
-                transofmed = new Literal(literal.predicate(),
-                        variableSupplier.get(literal.get(0) + "-" + graphIdx),
-                        parseSymbolicWeightStateful(literal.get(1), sumSupplier, productSupplier, weightVariableSupplier, literals, expressionCache),
-                        parseSymbolicWeightStateful(literal.get(2), sumSupplier, productSupplier, weightVariableSupplier, literals, expressionCache),
-                        graphVar);
-            } else if (literal.predicate().startsWith("E")) { //  E(x1, x2, 2)
-                transofmed = new Literal(literal.predicate(),
-                        variableSupplier.get(literal.get(0) + "-" + graphIdx),
-                        variableSupplier.get(literal.get(1) + "-" + graphIdx),
-                        parseSymbolicWeightStateful(literal.get(2), sumSupplier, productSupplier, weightVariableSupplier, literals, expressionCache),
-                        graphVar);
-            } else if (literal.predicate().startsWith("W")) { //  W(1)
-                transofmed = new Literal(literal.predicate(),
-                        parseSymbolicWeightStateful(literal.get(0), sumSupplier, productSupplier, weightVariableSupplier, literals, expressionCache),
-                        graphVar);
-            } else if (literal.predicate().startsWith("C")) { //  C(name_i, w_i, r_ii, k, inner_ri) k is a scalar (size of the clique)
-                transofmed = new Literal(literal.predicate(),
-                        variableSupplier.get(literal.get(0) + "-" + graphIdx),
-                        parseSymbolicWeightStateful(literal.get(1), sumSupplier, productSupplier, weightVariableSupplier, literals, expressionCache),
-                        parseSymbolicWeightStateful(literal.get(2), sumSupplier, productSupplier, weightVariableSupplier, literals, expressionCache),
-                        parseSymbolicWeightStateful(literal.get(3), sumSupplier, productSupplier, weightVariableSupplier, literals, expressionCache),
-                        parseSymbolicWeightStateful(literal.get(4), sumSupplier, productSupplier, weightVariableSupplier, literals, expressionCache),
-                        graphVar);
-            } else {
-                System.err.println("error while computing cell-graph at " + addedCellGraphs + " out of " + cellGraphQueue.size());
-                System.err.println(cellGraphQueue.get(addedCellGraphs).toFol());
-                System.err.println(processBuilder.command());
-                System.err.println(wholeLine);
-                System.err.println(graph);
-                System.err.println(literal);
-                throw new IllegalStateException();
-            }
-            literals.add(LiteralsCache.getInstance().get(transofmed));
-        }
-        literals.add(LiteralsCache.getInstance().get(new Literal("G", graphVar)));
-        return literals;
-    }
-
-    private Term parseSymbolicWeightStateful(Term constant, VariableSupplier sumSupplier, VariableSupplier productSupplier,
-                                             VariableSupplier weightVariableSupplier, List<Literal> parseTree, Map<String, Term> expressionCache) {
-        String expression = constant.name();
-        if (!expression.startsWith("'")) { // -1, 1,... scalar weight
-            return constant;
-        }
-
-        if (expressionCache.containsKey(expression)) {
-            return expressionCache.get(expression);
-        }
-
-        Term finalTerm = sumSupplier.getNext();
-        expression = expression.substring(1, expression.length() - 1); // removing first and last '...'
-
-        List<Pair<Term, Boolean>> sums = Sugar.list(); // sum is either a constant (e.g. 10) or a product (e.g. p1)
-        while (!expression.isEmpty()) {
-            boolean startsWithMinus = expression.startsWith("-");
-            int nextPlus = expression.indexOf("+");
-            int nextMinus = startsWithMinus ? expression.indexOf("-", 1) : expression.indexOf("-");
-            int end = 0;
-            if (-1 == nextPlus && -1 == nextMinus) {
-                end = expression.length();
-            } else if (-1 == nextPlus) {
-                end = nextMinus;
-            } else if (-1 == nextMinus) {
-                end = nextPlus;
-            } else {
-                end = Math.min(nextPlus, nextMinus);
-            }
-
-            String part = expression.substring(startsWithMinus ? 1 : 0, end);
-            expression = expression.substring(end);
-
-            if (part.contains("x")) { // we're gonna do some product
-                Variable productVariable = productSupplier.getNext();
-                sums.add(new Pair<>(productVariable, startsWithMinus));
-
-                for (String expr : part.split("\\*")) {
-                    if (expr.contains("x")) {
-                        List<Term> arguments = Sugar.list(productVariable);
-                        String[] split = expr.split("\\^");
-                        arguments.add(weightVariableSupplier.get(split[0]));
-                        arguments.add(new Constant(2 == split.length ? split[1] : "1")); // ^1 might be redundant but better be safe than sorry
-                        parseTree.add(LiteralsCache.getInstance().get(new Literal("P", arguments)));
-                    } else { // scalar
-                        parseTree.add(LiteralsCache.getInstance().get(new Literal("P", productVariable, new Constant(expr))));
-                    }
-                }
-            } else {// just a scalar
-                sums.add(new Pair<>(new Constant(part), startsWithMinus));
-            }
-
-            if (expression.startsWith("+")) {
-                expression = expression.substring(1);
-            }
-        }
-        for (Pair<Term, Boolean> sum : sums) {
-            parseTree.add(LiteralsCache.getInstance().get(new Literal(sum.getS() ? "Md" : "M", finalTerm, sum.getR()))); // M stands for addition, Md for distraction
-        }
-
-        expressionCache.put(constant.name(), finalTerm);
-        return finalTerm;
-    }
-
-    private Triple<List<SentenceState>, String, Counters<Integer>> isoPruneParallel(List<SentenceState> sentences, ClausesGenerator clausesGenerator) {
-//        System.out.println("isoPruneParallel");
+    private Triple<List<SentenceState>, String, Counters<Integer>> isoPruneParallel
+            (List<SentenceState> sentences, ClausesGenerator clausesGenerator) {
         LiteralsCache cache = LiteralsCache.getLayer();
         ConcurrentIsoHandler iso = new ConcurrentIsoHandler();
         List<SentenceState> retVal = sentences
                 .parallelStream()
                 .filter(sentence -> {
-//                    boolean val = !iso.contains(sentence.getICW());
                     SentenceState witness = iso.contains(sentence.getICW(cache));
                     boolean val = null == witness;
                     if (clausesGenerator.useLogger && !val) {
@@ -1011,6 +888,15 @@ public class SentenceFinder {
                         .filter(clause -> connectionFilters.stream().allMatch(filter -> filter.test(sentence, clause)))
                         .map(sentence::extend)
                 );
+    }
+
+    private Stream<SentenceState> connect(SentenceState sentence, List<Clause> clauses, List<JoiningFilter> connectionFilters) {
+        if (clauses.isEmpty()) {
+            return Stream.empty();
+        }
+        return clauses.parallelStream()
+                .filter(clause -> connectionFilters.stream().allMatch(filter -> filter.test(sentence, clause)))
+                .map(sentence::extend);
     }
 
 

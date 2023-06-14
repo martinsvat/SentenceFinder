@@ -54,6 +54,8 @@ public class SentenceSetup {
     public final int juliaThreads;
     public final boolean computeCellGraph;
     public final String cellGraph;
+    public final String mode;
+    public String fastWFOMCVersion;
 
     public final String seed;
     public final Long timeLimit;
@@ -61,7 +63,8 @@ public class SentenceSetup {
     public final boolean statesStoring;
     public final boolean debug;
     private final String redis;
-    public final boolean collectCellGraphs = false; // dev & debug
+    public final boolean canonicalCellGraphs;
+    //public final boolean collectCellGraphs = false; // dev & debug
     private StatefulRedisConnection<String, String> connection;
     private RedisClient redisClient;
     public RedisCommands<String, String> redisConnection;
@@ -75,7 +78,8 @@ public class SentenceSetup {
                          boolean quantifiersReducibility, int maxK, int maxCountingClauses, int maxLiteralsPerCountingClause,
                          boolean doubleCountingExist, boolean countingContradictionFilter, int maxProver9Seconds,
                          String seed, boolean negations, boolean isomorphicSentences, Long timeLimit, long cellTimeLimit,
-                         String redis, boolean languageBias, boolean lexicographicalMatching) {
+                         String redis, boolean languageBias, boolean lexicographicalMatching, boolean canonicalCellGraphs,
+                         String mode) {
         this.maxOverallLiterals = maxOverallLiterals < 0 ? maxClauses * maxLiteralsPerClause : maxOverallLiterals;
         this.maxClauses = maxClauses;
         this.maxLiteralsPerClause = maxLiteralsPerClause;
@@ -122,6 +126,9 @@ public class SentenceSetup {
         this.cellTimeLimit = cellTimeLimit;
         this.countingContradictionFilter = countingContradictionFilter && this.maxK > 0 && this.maxCountingClauses > 0 && this.maxLiteralsPerCountingClause > 0;
         this.timeLimit = timeLimit;
+        this.canonicalCellGraphs = canonicalCellGraphs;
+
+        this.mode = mode;
 
         this.redis = redis;
         if (null != redis && computeCellGraph) { // if Julia's cell-graph file is not provided, do not connect to Redis at all
@@ -139,11 +146,11 @@ public class SentenceSetup {
         }
     }
 
-    public SentenceSetup(int maxOverallLiterals, int maxClauses, int maxLiteralsPerClause, int unaryPredicates, int binaryPredicates, int numberOfVariables, boolean quantifiers, boolean statesStoring, String prover9Path, boolean reflexiveAtoms, boolean permutingArguments, String cellGraph, boolean debug, boolean trivialConstraints, int juliaThreads, boolean decomposableComponents, boolean naiveTautology, boolean tautologyFilter, boolean contradictionFilter, boolean subsumption, boolean quantifiersReducibility, int maxK, int maxCountingClauses, int maxLiteralsPerCountingClause, boolean doubleCountingExist, boolean countingContradictionFilter, int maxProver9Seconds, String seed, boolean negations, boolean isomorphicSentences, Long timeLimit, long cellTimeLimit, String redis, boolean languageBias, boolean lexicographicalMatching) {
-        this(maxOverallLiterals, maxClauses, maxLiteralsPerClause, unaryPredicates, binaryPredicates, numberOfVariables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, null, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, redis, languageBias, lexicographicalMatching);
+    public SentenceSetup(int maxOverallLiterals, int maxClauses, int maxLiteralsPerClause, int unaryPredicates, int binaryPredicates, int numberOfVariables, boolean quantifiers, boolean statesStoring, String prover9Path, boolean reflexiveAtoms, boolean permutingArguments, String cellGraph, boolean debug, boolean trivialConstraints, int juliaThreads, boolean decomposableComponents, boolean naiveTautology, boolean tautologyFilter, boolean contradictionFilter, boolean subsumption, boolean quantifiersReducibility, int maxK, int maxCountingClauses, int maxLiteralsPerCountingClause, boolean doubleCountingExist, boolean countingContradictionFilter, int maxProver9Seconds, String seed, boolean negations, boolean isomorphicSentences, Long timeLimit, long cellTimeLimit, String redis, boolean languageBias, boolean lexicographicalMatching, boolean canonicalCellGraphs, String mode) {
+        this(maxOverallLiterals, maxClauses, maxLiteralsPerClause, unaryPredicates, binaryPredicates, numberOfVariables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, null, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, redis, languageBias, lexicographicalMatching, canonicalCellGraphs, mode);
     }
 
-    public SentenceSetup(int maxOverallLiterals, int maxClauses, int maxLiteralsPerClause, int unaryPredicates, int binaryPredicates, int numberOfVariables, boolean quantifiers, boolean statesStoring, String prover9Path, boolean reflexiveAtoms, Path errOut, boolean permutingArguments, String cellGraph, boolean debug, boolean trivialConstraints, int juliaThreads, boolean decomposableComponents, boolean naiveTautology, boolean tautologyFilter, boolean contradictionFilter, boolean subsumption, boolean quantifiersReducibility, int maxK, int maxCountingClauses, int maxLiteralsPerCountingClause, boolean doubleCountingExist, boolean countingContradictionFilter, int maxProver9Seconds, String seed, boolean negations, boolean isomorphicSentences, Long timeLimit, long cellTimeLimit, String redis, boolean languageBias, boolean lexicographicalMatching) {
+    public SentenceSetup(int maxOverallLiterals, int maxClauses, int maxLiteralsPerClause, int unaryPredicates, int binaryPredicates, int numberOfVariables, boolean quantifiers, boolean statesStoring, String prover9Path, boolean reflexiveAtoms, Path errOut, boolean permutingArguments, String cellGraph, boolean debug, boolean trivialConstraints, int juliaThreads, boolean decomposableComponents, boolean naiveTautology, boolean tautologyFilter, boolean contradictionFilter, boolean subsumption, boolean quantifiersReducibility, int maxK, int maxCountingClauses, int maxLiteralsPerCountingClause, boolean doubleCountingExist, boolean countingContradictionFilter, int maxProver9Seconds, String seed, boolean negations, boolean isomorphicSentences, Long timeLimit, long cellTimeLimit, String redis, boolean languageBias, boolean lexicographicalMatching, boolean canonicalCellGraphs, String mode) {
         this(maxOverallLiterals,
                 maxClauses,
                 maxLiteralsPerClause,
@@ -181,41 +188,43 @@ public class SentenceSetup {
                 cellTimeLimit,
                 redis,
                 languageBias,
-                lexicographicalMatching
+                lexicographicalMatching,
+                canonicalCellGraphs,
+                mode
         );
     }
 
     public SentenceSetup(int variables) {
-        this(0, 0, 0, 0, 0, variables, false, false, "", false, null, false, "", false, false, 1, false, false, false, false, false, false, 0, 0, 0, false, false, 0, "", false, false, 0L, 0l, "", false, false);
+        this(0, 0, 0, 0, 0, variables, false, false, "", false, null, false, "", false, false, 1, false, false, false, false, false, false, 0, 0, 0, false, false, 0, "", false, false, 0L, 0l, "", false, false, false, "bfs");
     }
 
     public SentenceSetup setPredicates(List<Predicate> predicates) {
-        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, "", languageBias, false);
+        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, "", languageBias, lexicographicalMatching, canonicalCellGraphs, mode);
     }
 
     public SentenceSetup setK(int k) {
-        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, k, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, "", languageBias, false);
+        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, k, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, "", languageBias, lexicographicalMatching, canonicalCellGraphs, mode);
     }
 
     public SentenceSetup setDoubleExists(boolean doubleExists) {
-        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleExists, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, "", languageBias, false);
+        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleExists, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, "", languageBias, lexicographicalMatching, canonicalCellGraphs, mode);
     }
 
     public SentenceSetup setIso(boolean isoPredicateNames, boolean isoSings, boolean symmetryFlip) {
-        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, symmetryFlip, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, isoSings, isoPredicateNames, timeLimit, cellTimeLimit, "", languageBias, false);
+        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, symmetryFlip, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, isoSings, isoPredicateNames, timeLimit, cellTimeLimit, "", languageBias, lexicographicalMatching, canonicalCellGraphs, mode);
     }
 
 
     public SentenceSetup setQuantifiers(boolean quantifiers) {
-        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, "", languageBias, false);
+        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, "", languageBias, lexicographicalMatching, canonicalCellGraphs, mode);
     }
 
     public SentenceSetup setMaxCountingClauses(int maxCountingClauses) {
-        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, "", languageBias, false);
+        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, "", languageBias, lexicographicalMatching, canonicalCellGraphs, mode);
     }
 
     public SentenceSetup setMaxLiteralsPerCountingClause(int maxLiteralsPerCountingClause) {
-        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, "", languageBias, false);
+        return new SentenceSetup(maxOverallLiterals, maxClauses, maxLiteralsPerClause, predicates, variables, quantifiers, statesStoring, prover9Path, reflexiveAtoms, errOut, permutingArguments, cellGraph, debug, trivialConstraints, juliaThreads, decomposableComponents, naiveTautology, tautologyFilter, contradictionFilter, subsumption, quantifiersReducibility, maxK, maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExist, countingContradictionFilter, maxProver9Seconds, seed, negations, isomorphicSentences, timeLimit, cellTimeLimit, "", languageBias, lexicographicalMatching, canonicalCellGraphs, mode);
     }
 
     public boolean continueWithSearch() {
@@ -278,7 +287,7 @@ public class SentenceSetup {
         String cellGraphPath = System.getProperty("ida.sentenceSetup.cellGraph", Paths.get("C:\\data\\school\\development\\sequence-db\\fluffy-broccoli\\SFinder\\julia\\sample_multithreaded_unskolemized.jl").toString());
 //        String cellGraphPath = System.getProperty("ida.sentenceSetup.cellGraph", Paths.get("dev_null").toString());
         String redisParams = System.getProperty("ida.sentenceSetup.redis", "redis://mypass@127.0.0.1:6379/");
-
+        boolean canonicalCellGraphs = "true".equalsIgnoreCase(System.getProperty("ida.sentenceSetup.canonicalCellGraphs", "false"));
 
         String seed = System.getProperty("ida.sentenceSetup.seed", "");
 
@@ -288,6 +297,8 @@ public class SentenceSetup {
         boolean statesStoring = "true".equalsIgnoreCase(System.getProperty("ida.sentenceSetup.statesStoring", "false"));
         boolean debug = "true".equalsIgnoreCase(System.getProperty("ida.sentenceSetup.debug", "false"));
 //        boolean debug = "true".equalsIgnoreCase(System.getProperty("ida.sentenceSetup.debug", "true"));
+        String mode = System.getProperty("ida.sentenceSetup.mode", "bfs");
+//        String mode = System.getProperty("ida.sentenceSetup.mode", "dfs");
 
 
         return new SentenceSetup(maxOverallLiterals,
@@ -324,7 +335,9 @@ public class SentenceSetup {
                 cellTimeLimit,
                 redisParams,
                 languageBias,
-                lexicographicalMatching
+                lexicographicalMatching,
+                canonicalCellGraphs,
+                mode
         );
     }
 
@@ -377,7 +390,9 @@ public class SentenceSetup {
                     Long.parseLong(values.get("cellTimeLimit")),
                     values.get("redis"),
                     "true".equalsIgnoreCase(values.get("languageBias")),
-                    "true".equalsIgnoreCase(values.get("lexicographicalMatching"))
+                    "true".equalsIgnoreCase(values.get("lexicographicalMatching")),
+                    "true".equalsIgnoreCase(values.get("canonicalCellGraphs")),
+                    values.get("mode")
             );
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -469,6 +484,9 @@ public class SentenceSetup {
                 ", forkPollSize=" + System.getProperty("java.util.concurrent.ForkJoinPool.common.parallelism", "0") +
                 ", languageBias=" + languageBias +
                 ", lexicographicalMatching=" + lexicographicalMatching +
+                ", canonicalCellGraphs=" + canonicalCellGraphs +
+                ", fastWfOMCVersion=" + fastWFOMCVersion +
+                ", mode=" + mode +
                 '}';
     }
 
@@ -479,5 +497,9 @@ public class SentenceSetup {
         if (null != redisClient) {
             redisClient.shutdown();
         }
+    }
+
+    public void setFastWFOMCVersion(String fastWFOMCVersion) {
+        this.fastWFOMCVersion = fastWFOMCVersion;
     }
 }

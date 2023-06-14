@@ -21,7 +21,7 @@ public class Bridge {
         return new SentenceSetup(-1, -1, maxLiteralsPerClause, unaryPredicates, binaryPredicates, 2, true, false,
                 prover9Path, false, true, "", false, false, 0, true, true, true, true, true, true, k,
                 maxCountingClauses, maxLiteralsPerCountingClause, doubleCountingExists, false, 30, "", true, true, -1l,
-                -1l, "", true, true);
+                -1l, "", true, true, true, "bfs");
     }
 
     public static Quintuple<SentenceFinder, List<Clause>, List<SingleFilter<SentenceState>>, List<JoiningFilter>, ClausesGenerator> prepare(SentenceSetup setup) {

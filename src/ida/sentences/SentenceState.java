@@ -1,10 +1,10 @@
 package ida.sentences;
 
+import ida.hypergraphIsomorphism.*;
 import ida.ilp.logic.*;
 import ida.ilp.logic.quantifiers.Quantifier;
 import ida.ilp.logic.quantifiers.TwoQuantifiers;
 import ida.ilp.logic.special.IsoClauseWrapper;
-import ida.ilp.logic.subsumption.Matching;
 import ida.sentences.caches.LiteralsCache;
 import ida.utils.Combinatorics;
 import ida.utils.Sugar;
@@ -23,6 +23,7 @@ public class SentenceState {
     private String cannonic;
     private String ultraCannonic; // negation swaps, relations swap
     private IsoClauseWrapper icw;
+    private String canonicalCellGraph;
 
     public SentenceState(List<Clause> clauses, SentenceSetup setup) {
         this.clauses = clauses;
@@ -584,5 +585,14 @@ public class SentenceState {
         }
         this.icw = null;
         this.cellGraph = null;
+        this.canonicalCellGraph = null;
+    }
+
+    public void setCanonicalCellGraph(String cellGraph) {
+        this.canonicalCellGraph = cellGraph;
+    }
+
+    public String getCanonicalCellGraph() {
+        return canonicalCellGraph;
     }
 }

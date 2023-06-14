@@ -108,6 +108,7 @@ Cell Graph Isomorphism
     -Dida.sentenceSetup.juliaThreads=10
     -Dida.sentenceSetup.cellTimeLimit=3600
     -Dida.sentenceSetup.redis=redis://mypass@127.0.0.1:6379/0
+    -Dida.sentenceSetup.canonicalCellGraphs=false
     -jar ./out/artefact/SFinder_jar/SFinder.jar
 ```
 
@@ -116,7 +117,9 @@ good thing to cache them. To do this, everything you need to turn on Redis and i
 need to execute the `java` command from a folder where you have installed the FastWFOMC project (see the installation 
 section).
 
-The cell time limit is experimental yet and does not work correctly right now.
+The cell time limit is experimental yet and does not work correctly right now. `canonicalCellGraphs` is under development
+right now (canonical version of graph isomorphism instead of a SAT way); `true` mode is a way slower as the backed for
+finding canonical version of a graph is rather prototypical and slow. 
 
 
 Miscellaneous
@@ -185,6 +188,32 @@ direction of binary predicates, e.g.
 (E x B0(x, x)) & (V x E=1 y ~B0(x, y))
 (E x E y B0(x, x) | ~B0(x, y))
 ```
+
+DFS
+---
+
+Up till now, the search was driven in breadth-first fashion using clauses as basic building blocks. However, you may 
+switch to depth-first strategy using
+```
+    java
+        -Dida.sentenceSetup.mode=dfs
+        -jar ./out/artefact/SFinder_jar/SFinder.jar
+```
+
+This will change the search strategy, the usage of pruning or hiding techniques (e.g. reflexive atoms will be a pruning 
+technique instead of a hiding one), and the output, which will be in the form 
+
+```
+(E x B0(x, x)) & (E=1 x V y ~B0(x, y)) & (V x E=1 y ~B0(x, y))	
+(E x B0(x, x)) & (E=1 x V y ~B0(x, y)) & (V x E=1 y ~B0(y, x))	
+# opened 10 (10 / 10 / 18) [157] in 150	(E x B0(x, x)) & (E=1 x V y ~B0(x, y))
+```
+
+Where the last comment line reports currently opened node (with some search statistics), and is preceded by newly generated
+sentences that have not been seen so far. DFS mode does not support load-&-continue mode.
+
+As of now, the DFS mode is a way slower and rather experimental. 
+
 
 INSTALLATION
 ============
@@ -277,6 +306,7 @@ In case the script file is not found by the mining tool, you won't see this in t
 but `null` value instead. The important thing is to run the `java` command from the folder you have installed FastWFOMC.
 Otherwise, you might run into problem of not being able to execute that cell graph computation from within java.
 
+
 FAREWELL
 ========
 
@@ -315,6 +345,7 @@ cooler with every single step of development
 # info: 1: 8  (12, 32) in 0 [ 0, 0, 0, 0]; 2: 84 (96, 269) in 6 [ 0, 6, 0, 0]; 3: 709 (803, 2835) in 83 [ 0, 81, 2, 0];     # starting search with setup:	1.3.3i	SentenceSetup{maxOverallLiterals=9, maxClauses=3, maxLiteralsPerClause=3, predicates=[U0/1; B0/2], variables=[x; y], statesStoring=false, quantifiers=true, reflexiveAtoms=true, prover9Path=D:\Program Files (x86)\Prover9-Mace4\bin-win32\prover9.exe, errOut=null, permutingArguments=true, cellGraphPath=C:\data\school\development\sequence-db\fluffy-broccoli\SFinder\julia\sample_multithreaded_unskolemized.jl, debug=false, trivialConstraints=true, juliaThreads=10, decomposableComponents=true, naiveTautology=true, tautologyFilter=true, contradictionFilter=true, subsumption=true, quantifiersReducibility=true, maxK=1, maxCountingClauses=1, maxLiteralsPerCountingClause=1, doubleCountingExist=false, countingContradictionFilter=false, maxProver9Seconds=30, seed=, negations=true, isomorphicSentences=true, timeLimit=null, cellTimeLimit=3600, redis=redis://mypass@127.0.0.1:6379/, forkPollSize=10, languageBias=true}
 
 # info: 1: 11 (12, 32) in 30 [ 0, 0, 30, 0]; 2: 86 (96, 269) in 30 [ 0, 6, 24, 0]; 3: 708 (803, 2835) in 165 [ 0, 71, 94, 0]; # starting search with setup:	1.4.5	SentenceSetup{maxOverallLiterals=9, maxClauses=3, maxLiteralsPerClause=3, predicates=[U0/1; B0/2], variables=[x; y], statesStoring=false, quantifiers=true, reflexiveAtoms=true, prover9Path=D:\Program Files (x86)\Prover9-Mace4\bin-win32\prover9.exe, errOut=null, permutingArguments=true, cellGraph=C:\data\school\development\sequence-db\fluffy-broccoli\SFinder\julia\sample_multithreaded_unskolemized.jl, debug=false, trivialConstraints=true, juliaThreads=10, decomposableComponents=true, naiveTautology=true, tautologyFilter=true, contradictionFilter=true, subsumption=true, quantifiersReducibility=true, maxK=1, maxCountingClauses=1, maxLiteralsPerCountingClause=1, doubleCountingExist=false, countingContradictionFilter=false, maxProver9Seconds=30, seed=, negations=true, isomorphicSentences=true, timeLimit=null, cellTimeLimit=3600, redis=redis://mypass@127.0.0.1:6379/, forkPollSize=10, languageBias=true, lexicographicalMatching=true}
+# info: 1: 11 (12, 32) in 20 [ 0, 0, 20, 0]; 2: 83 (96, 269) in 25 [ 0, 6, 19, 0]; 3: 644 (803, 2835) in 260 [ 0, 69, 191, 0]; # starting search with setup:	1.5.6d	0.1	SentenceSetup{maxOverallLiterals=3, maxClauses=3, maxLiteralsPerClause=3, predicates=[U0/1; B0/2], variables=[x; y], statesStoring=false, quantifiers=true, reflexiveAtoms=true, prover9Path=D:\Program Files (x86)\Prover9-Mace4\bin-win32\prover9.exe, errOut=null, permutingArguments=true, cellGraph=C:\data\school\development\sequence-db\fluffy-broccoli\SFinder\julia\sample_multithreaded_unskolemized.jl, debug=false, trivialConstraints=true, juliaThreads=10, decomposableComponents=true, naiveTautology=true, tautologyFilter=true, contradictionFilter=true, subsumption=true, quantifiersReducibility=true, maxK=1, maxCountingClauses=1, maxLiteralsPerCountingClause=1, doubleCountingExist=false, countingContradictionFilter=false, maxProver9Seconds=30, seed=, negations=true, isomorphicSentences=true, timeLimit=null, cellTimeLimit=3600, redis=redis://mypass@127.0.0.1:6379/, forkPollSize=10, languageBias=true, lexicographicalMatching=true, canonicalCellGraphs=true, fastWfOMCVersion=0.1, mode=bfs}
 ```
 
 
