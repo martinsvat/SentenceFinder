@@ -1,5 +1,5 @@
-This repository contains C^2 sentence generator -- a part of a bigger machine learning approach that aims to  generate  
-*interesting* combinator integer sequences that can be encoded using a subset of first-order logic. The original work was
+This repository contains C^2 sentence generator -- a part of a bigger machine learning approach that aims to  generate *interesting* 
+combinator integer sequences that can be encoded using a subset of first-order logic. The original work was
 published in the paper *On Discovering Interesting Combinatorial Integer Sequences* IJCAI'23 (available at  [IJCAI'24](https://doi.org/10.24963/ijcai.2023/372);
 extended appendix available at [arxiv](https://arxiv.org/abs/2302.04606) and subsequently extended in 
 *Relaxing Deductive and Inductive Reasoning in Relational Logic* (dissertation, CTU'24). 
