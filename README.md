@@ -1,17 +1,35 @@
 This repository contains C2 sentence generator -- a part of a bigger machine learning approach that aims to  generate  
-`interesting` combinator integer sequences that can be encoded using a subset of first-order logic. The original work was
-published in the paper`On Discovering Interesting Combinatorial Integer Sequences` IJCAI'23 (extended appendix available
-at `https://arxiv.org/abs/2302.04606`) and subsequently extended in `Relaxing Deductive and Inductive Reasoning in 
-Relational Logic` (dissertation). A snapshot of the database from the original paper is available at `https://fluffy.jung.ninja` 
--- indeed, you can have `.ninja` as a TLD! Some of our generated sequences made it to the OEIS -- behold 
-`https://oeis.org/search?q=arxiv%3A2302.04606&sort=&language=english&go=Search`.
+*interesting* combinator integer sequences that can be encoded using a subset of first-order logic. The original work was
+published in the paper *On Discovering Interesting Combinatorial Integer Sequences* IJCAI'23 (available at  [IJCAI'24](https://doi.org/10.24963/ijcai.2023/372);
+extended appendix available at [arxiv](https://arxiv.org/abs/2302.04606) and subsequently extended in 
+*Relaxing Deductive and Inductive Reasoning in Relational Logic* (dissertation, CTU'24). 
 
+A snapshot of the database from the original paper is available at [fluffy.jung.ninja](https://fluffy.jung.ninja) -- indeed, you can have
+*.ninja* as a TLD! Some of our generated sequences made it to the OEIS -- [behold](https://oeis.org/search?q=arxiv%3A2302.04606&sort=&language=english&go=Search).
+
+If you'd like to cite us, please use
+```aidl
+@inproceedings{ijcai2023p372,
+  title     = {On Discovering Interesting Combinatorial Integer Sequences},
+  author    = {Svatoš, Martin and Jung, Peter and Tóth, Jan and Wang, Yuyi and Kuželka, Ondřej},
+  booktitle = {Proceedings of the Thirty-Second International Joint Conference on
+               Artificial Intelligence, {IJCAI-23}},
+  publisher = {International Joint Conferences on Artificial Intelligence Organization},
+  editor    = {Edith Elkind},
+  pages     = {3338--3346},
+  year      = {2023},
+  month     = {8},
+  note      = {Main Track},
+  doi       = {10.24963/ijcai.2023/372},
+  url       = {https://doi.org/10.24963/ijcai.2023/372},
+}
+```
 
 # Land of the sentence miners welcomes you
 
 Dear wanderer!
 
-Welcome in the land of sentences where you can FO2 and C2 sentences. To mine FO2 sentences with at most 5 clauses,
+Welcome in the land of sentences where you can FO^2 and C^2 sentences. To mine FO^2 sentences with at most 5 clauses,
 4 literals per clause, 3 unary and 2 binary predicates, run the following command
 
 ```
@@ -31,7 +49,7 @@ of `maxClauses * maxLiteralsPerClause`.
 
 To allow forall and exists quantifiers set `quantifiers=true`, otherwise only forall quantifiers are allowed.
 
-To mine C2 sentences, e.g. `k` being at most 1, at most 2 clauses with a counting quantifier, and at most 3 literals
+To mine C^2 sentences, e.g. `k` being at most 1, at most 2 clauses with a counting quantifier, and at most 3 literals
 per counting clause, use the following command
 
 ```
@@ -170,7 +188,7 @@ the final clauses, e.g. trivial constraints. Predicates used in the seeds have t
 starting from 0 to at most n-ary literals. Otherwise, the search won't start. Layers correspond to the number of literals
 in a sentence excluding those in the seed (contrary seed's clauses are included in `maxClauses`).
 
-Here, a `seed` is a FO2/C2 sentence. There are few constraints on the sentences:
+Here, a `seed` is a FO^2/C^2 sentence. There are few constraints on the sentences:
 -- they must look as an output of this precious mining tool (CNF)
 -- first variable must be named `x` and the second must be named `y`
 -- the first variable must be used in the sentence (e.g. `V x E y U(y)` fails)
@@ -234,7 +252,7 @@ sentences that have not been seen so far. DFS mode does not support load-&-conti
 As of now, the DFS mode is a way slower and rather experimental. 
 
 
-INSTALLATION
+Installation
 ============
 
 Install Java 16 or higher. Install Redis (https://redis.io/docs/getting-started/installation/) if you want to use it for
@@ -244,11 +262,10 @@ libraris in `dependencies`).
 Prover9
 -------
 
-Filtering out contradictions relies on Prover9 installed on your system (
-see `https://www.cs.unm.edu/~mccune/prover9/manual/2009-11A/`,
-`https://www.cs.unm.edu/~mccune/prover9/`), e.g. to download sources and build them or to use terminal on Linux with
-`sudo apt-get install -y prover9` command. Once you have installed Prover9, you may test that it works, e.g. typing in
-this folder
+Filtering out contradictions relies on Prover9 installed on your system (see 
+[Prover9 2009-11A](https://www.cs.unm.edu/~mccune/prover9/manual/2009-11A/) and [Prover9 manual](https://www.cs.unm.edu/~mccune/prover9/),
+e.g., to download sources and build them or to use terminal on Linux with the `sudo apt-get install -y prover9` command. 
+Once you have installed Prover9, you may test that it works, e.g., typing in this folder
 
 ```
 /home/path-to-my-installation/LADR-2009-11A/bin/prover9 -f ./prover9examples/contradiction.in
@@ -326,7 +343,7 @@ but `null` value instead. The important thing is to run the `java` command from 
 Otherwise, you might run into problem of not being able to execute that cell graph computation from within java.
 
 
-FAREWELL
+Farewell
 ========
 
 If it happens that you reached the end of the mining, you will obtain
@@ -372,13 +389,13 @@ cooler with every single step of development
 Experiments
 ===========
 
-See below a command that reproduces the FO2 experiment from the original paper with all pruning and hiding techniques
+See below a command that reproduces the FO^2 experiment from the original paper with all pruning and hiding techniques
 turned on (you have to add your path to prover9 and test the cell graph path).
 ```
 java -Xms5g -Xmx50g -Dida.sentenceSetup.timeLimit=2880 -Dida.sentenceSetup.maxOverallLiterals=10 -Dida.sentenceSetup.maxClauses=2 -Dida.sentenceSetup.maxLiteralsPerClause=5 -Dida.sentenceSetup.unaryPredicates=1 -Dida.sentenceSetup.binaryPredicates=1 -Dida.sentenceSetup.quantifiers=true -Dida.sentenceSetup.maxK=0 -Dida.sentenceSetup.maxCountingClauses=2 -Dida.sentenceSetup.maxLiteralsPerCountingClause=1 -Dida.sentenceSetup.doubleCountingExist=false -Dida.sentenceSetup.languageBias=true -Dida.sentenceSetup.prover9Path=.../.../prover9 -Dida.sentenceSetup.maxProver9Seconds=30 -Dida.sentenceSetup.naiveTautology=true -Dida.sentenceSetup.tautologyFilter=true -Dida.sentenceSetup.contradictionFilter=true  -Dida.sentenceSetup.decomposableComponents=true -Dida.sentenceSetup.isomorphicSentences=true -Dida.sentenceSetup.negations=true -Dida.sentenceSetup.permutingArguments=true -Dida.sentenceSetup.reflexiveAtoms=true -Dida.sentenceSetup.subsumption=true  -Dida.sentenceSetup.trivialConstraints=true -Dida.sentenceSetup.quantifiersReducibility=true -Dida.sentenceSetup.cellGraph=./julia/sample_multithreaded_unskolemized.jl   -jar SFinder.jar
 ```
 
-The rest of experiments can be easily obtained by altering this command; e.g. `maxK=1` to get C2 experiments, 
+The rest of experiments can be easily obtained by altering this command; e.g. `maxK=1` to get C^2 experiments, 
 `trivialConstraints=false` to turn of trivial constraints feature, and so on. This will give a little smaller numbers as 
 `quantifiersReducibility` was fixed and enhanced heavily from the version 0.x.y.
 
