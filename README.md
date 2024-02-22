@@ -8,7 +8,7 @@ A snapshot of the database from the original paper is available at [fluffy.jung.
 *.ninja* as a TLD! Some of our generated sequences made it to the OEIS -- [behold](https://oeis.org/search?q=arxiv%3A2302.04606&sort=&language=english&go=Search).
 
 If you'd like to cite us, please use
-```aidl
+```
 @inproceedings{ijcai2023p372,
   title     = {On Discovering Interesting Combinatorial Integer Sequences},
   author    = {Svatoš, Martin and Jung, Peter and Tóth, Jan and Wang, Yuyi and Kuželka, Ondřej},

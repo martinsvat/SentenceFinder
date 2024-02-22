@@ -7,7 +7,7 @@ Running experiments
 -------------------
 
 Reproducing the experiments is as easy as running a java command, e.g.
-```aidl
+```
     java -Xms5g -Xmx50g -Dida.sentenceSetup.timeLimit=2880 -Dida.sentenceSetup.maxOverallLiterals=6 
          -Dida.sentenceSetup.maxClauses=2 -Dida.sentenceSetup.maxLiteralsPerClause=3 -Dida.sentenceSetup.unaryPredicates=2
          -Dida.sentenceSetup.binaryPredicates=2 -Dida.sentenceSetup.quantifiers=true -Dida.sentenceSetup.maxK=1 
@@ -37,7 +37,7 @@ accommodate these two lines according to your environment.
 
 After doing all of this, you need a python >= 3.10 environment with Pandas, typer, and typing packages to run the script,
 e.g.
-```aidl
+```
     python slurmKicker.py --maxliterals 3 --name prefix1 --maxlayers 3 > prefix1.sh
 ```
 with the possibility of setting max clauses, max available memory, number of unary and binary predicates. A more detailed 
@@ -55,7 +55,7 @@ action. Firstly, you have to unzip the rar archive to get the csv file which is 
 paper, the default time limit per spectrum was 5 minutes, hence the value of `MAX_TIME` variable in the file.
 
 To get the same plots, just run the script with the same setup as you did for the experiments generation, i.e.
-```aidl
+```
     python grabber.py --source run5 --name fo52-order4 --maxliterals 5 --maxclauses 2 --maxlayers 10 --unarypredicates 1 --binarypredicates 1 --k 0
 ```
 
