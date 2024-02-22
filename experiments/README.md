@@ -22,13 +22,13 @@ Reproducing the experiments is as easy as running a java command, e.g.
          -Dida.sentenceSetup.trivialConstraints=false -Dida.sentenceSetup.cellGraph=none 
          -Djava.util.concurrent.ForkJoinPool.common.parallelism=10 -Dida.sentenceSetup.statesStore=false 
          -Dida.sentenceSetup.juliaThreads=30 
-         -jar /home/MY_USER_NAME/SFinder/SFinder.jar > prefix1-order4-3-2--1-2-2-1/0baseline.txt
+         -jar /home/MY_USER_NAME/SentenceFinder/SFinder.jar > prefix1-order4-3-2--1-2-2-1/0baseline.txt
 ```
 
 However, to reproduce the experiments, one would have to alter this command multiple times which is undesired. Hence, 
 one may use the `slurmKicker.py` script which generates instances that does the altering of the command above. However,
 one has to firstly accommodate the script to his environment. Assuming you have downloaded the repo into 
-`/home/MY_USER_NAME/SFinder` folder, you just have to replace with your username; otherwise you have to change the path.
+`/home/MY_USER_NAME/SentenceFinder` folder, you just have to replace with your username; otherwise you have to change the path.
 Similarly, you may set up all remaining default values, e.g., `PATH_TO_JULIA_SCRIPT`, `N_JULIA_THREADS`, `PATH_TO_PROVER9`,
 etc. There are two more things to set up -- Java and Julia -- that are needed to be on the path. In case you are running 
 a local machine, you may probably drop lines 141 `"ml Java/17.0.4\n"` and 145 `f"julia {PATH_TO_JULIA_INSTALL}\n"`. If 

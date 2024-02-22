@@ -7,9 +7,9 @@ import typer
 import typing as t
 
 # SET THIS UP
-SFINDER_JAR = "/home/MY_USER_NAME/SFinder/SFinder.jar"
-PATH_TO_JULIA_SCRIPT = "/home/MY_USER_NAME/SFinder/julia/sample_multithreaded_unskolemized.jl"
-PATH_TO_JULIA_INSTALL = "/home/MY_USER_NAME/SFinder/julia/sampleInstall.jl"
+SFINDER_JAR = "/home/MY_USER_NAME/SentenceFinder/SFinder.jar"
+PATH_TO_JULIA_SCRIPT = "/home/MY_USER_NAME/SentenceFinder/julia/sample_multithreaded_unskolemized.jl"
+PATH_TO_JULIA_INSTALL = "/home/MY_USER_NAME/SentenceFinder/julia/sampleInstall.jl"
 PATH_TO_PROVER9 = "/home/MY_USER_NAME/LADR-2009-11A/bin/prover9"
 N_JULIA_THREADS = 30
 TIME_LIMIT = 2880
