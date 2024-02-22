@@ -31,13 +31,14 @@ import java.util.stream.Stream;
 
 public class SentenceFinder {
 
+    private static final CharSequence SENTENCE_DELIMITER = ";";
     private final String BASIC_CLAUSES = "basic clauses";
     private final String BASIC_CLAUSES_ENDS = "end of basic clauses";
 
     private final String ENDING_MESSAGE = "the search has ended!";
     private final String OUT_OF_TIME_MESSAGE = "the search has ended because of the time limit!";
-    private final String SEEDS_START = "seeds follow";
-    private final String SEEDS_END = "end of seeds";
+    private final String SEEDS_START = "seed follow";
+    private final String SEEDS_END = "end of seed";
     private final SentenceSetup setup;
     private final boolean debug;
     private final List<Quantifier> quantifiers;
@@ -47,7 +48,7 @@ public class SentenceFinder {
     private final Matching matching = new Matching();
     private final SentenceState emptySentence;
 
-//    private final MultiList<Clause, SentenceState> cellGraphs = new MultiList<>(); // this is just a dev tool
+    //    private final MultiList<Clause, SentenceState> cellGraphs = new MultiList<>(); // this is just a dev tool
 //    private final MultiList<String, SentenceState> cellGraphsCanonical = new MultiList<>(); // this is just a dev tool
     private final String BFS = "bfs";
     private final String DFS = "dfs";
@@ -75,8 +76,8 @@ public class SentenceFinder {
 
 
     public void loadAndContinueSearch() {
-        if (BFS.equals(setup.mode)) {
-            throw new IllegalStateException("BFS mode does not support load & continue with search.");
+        if (DFS.equals(setup.mode)) {
+            throw new IllegalStateException("DFS mode does not support load & continue with search.");
         }
         SentenceState seed = null;
         List<Clause> baseClause = Sugar.list();
@@ -212,10 +213,16 @@ public class SentenceFinder {
             if (!seed.endsWith("]")) {
                 throw new IllegalStateException();
             }
+            seed = seed.substring(1, seed.length() - 1).trim(); // removing []
         }
 
-        SentenceState result = SentenceState.parse(seed, setup);
-        List<Clause> cached = result.clauses.stream().map(clause -> {
+        if (seed.contains(SENTENCE_DELIMITER)) {
+            throw new IllegalStateException("Seed can contain only one sentence. Don't use sentence delimiters.");
+        }
+
+        SentenceState parsedSeed = SentenceState.parse(seed, setup);
+        SentenceState minimal = SentenceState.parse(parsedSeed.getUltraCannonic(), setup); // not the nicest way
+        List<Clause> cached = minimal.clauses.stream().map(clause -> {
             if (clause.getId() < 0) {
                 Clause isThere = ClausesCache.getInstance().get(clause.getCannonic());
                 if (null == isThere) {

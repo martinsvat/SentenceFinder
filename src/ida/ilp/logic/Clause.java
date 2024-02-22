@@ -481,7 +481,7 @@ public class Clause {
     @Override
     public int hashCode() {
         if (this.hashCode == -1) {
-            this.hashCode = this.literals.hashCode();
+            this.hashCode = this.literals.hashCode() + (null == this.quantifier ? 0 : this.quantifier.hashCode() << 4); // TODO is this fix enough?
         }
         return this.hashCode;
     }
@@ -490,16 +490,17 @@ public class Clause {
     public boolean equals(Object o) {
         if (o instanceof Clause) {
             Clause c = (Clause) o;
-            boolean quantifiersEqual = false;
+            boolean quantifiersEqual = (null == this.quantifier) ? this.quantifier == c.quantifier : this.quantifier.equals(c.quantifier);
             //= this.quantifier == c.quantifier; // quick workaround, since quantifiers are generated only once at the start
-            if (null == this.quantifier) {
-                quantifiersEqual = this.quantifier == c.quantifier;
-            } else {
-                quantifiersEqual = this.quantifier.getQuantifiers().equals(c.quantifier.getQuantifiers())
-                        && (this.quantifier.getUsedVariables() == c.quantifier.getUsedVariables()
-                        || this.quantifier.getUsedVariables().equals(c.quantifier.getUsedVariables())) // ugly hack, this should be insie quantifier
-                ;
-            }
+//            if (null == this.quantifier) {
+//                quantifiersEqual = this.quantifier == c.quantifier;
+//            } else {
+//                quantifiersEqual = this.quantifier.equals(c.quantifier);
+//                quantifiersEqual = this.quantifier.getQuantifiers().equals(c.quantifier.getQuantifiers())
+//                        && (this.quantifier.getUsedVariables() == c.quantifier.getUsedVariables()
+//                        || this.quantifier.getUsedVariables().equals(c.quantifier.getUsedVariables())) // ugly hack, this should be inside quantifier
+            ;
+//            }
             return this.isSubsetOf(c) && c.isSubsetOf(this) && quantifiersEqual;
         } else {
             return false;

@@ -434,7 +434,7 @@ public class SentenceSetup {
             }
 
             if ((element == ',' && stack.isEmpty()) || index == line.length() - 1) {
-                String[] keyVal = line.substring(lastCut, index).split("=", 2);
+                String[] keyVal = line.substring(lastCut, index == line.length() - 1 ? line.length() : index).split("=", 2);
                 if (keyVal.length != 2) {
                     throw new IllegalStateException();
                 }

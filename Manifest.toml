@@ -87,11 +87,11 @@ version = "200.900.1+0"
 
 [[deps.FastWFOMC]]
 deps = ["Combinatorics", "LRUCache", "LightGraphs", "LinearAlgebra", "Nemo", "Pkg", "Printf", "Random", "TOML"]
-git-tree-sha1 = "18f4fb729b657efc4059f5cc2e3c4cdaf5990d7b"
+git-tree-sha1 = "4bc23af446fc7867577f47e59d2f76eda4baeede"
 repo-rev = "main"
 repo-url = "https://github.com/jan-toth/FastWFOMC.jl"
 uuid = "ac26a18c-a000-4bf3-90e5-18d42cfd75f0"
-version = "0.3.5"
+version = "0.3.7"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"

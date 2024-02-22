@@ -1,3 +1,12 @@
+This repository contains C2 sentence generator -- a part of a bigger machine learning approach that aims to  generate  
+`interesting` combinator integer sequences that can be encoded using a subset of first-order logic. The original work was
+published in the paper`On Discovering Interesting Combinatorial Integer Sequences` IJCAI'23 (extended appendix available
+at `https://arxiv.org/abs/2302.04606`) and subsequently extended in `Relaxing Deductive and Inductive Reasoning in 
+Relational Logic` (dissertation). A snapshot of the database from the original paper is available at `https://fluffy.jung.ninja` 
+-- indeed, you can have `.ninja` as a TLD! Some of our generated sequences made it to the OEIS -- behold 
+`https://oeis.org/search?q=arxiv%3A2302.04606&sort=&language=english&go=Search`.
+
+
 # Land of the sentence miners welcomes you
 
 Dear wanderer!
@@ -61,7 +70,8 @@ some techniques described in the original paper are no longer `not-safe-to-delet
 ```
 
 When `subsumption=true` all theta-reducible clauses are thrown out. Trivial constraints are in clause-wise approach
-safe-to-delete. `quantifiersReducibility=true` extends Subsumption from the paper beyond to different combinations of quantifiers.
+safe-to-delete. `quantifiersReducibility=true` extends Subsumption from the original paper beyond to different 
+combinations of quantifiers (it's called `\theta*` in the second paper).
 
 There is `lexicographicalMatching` which, when set to `true`, switches the underlying engine to do pruning based on 
 lexicographically minimal version of sentence (isomorphic setences, negations, and permuting arguments have to be turned
@@ -117,9 +127,16 @@ good thing to cache them. To do this, everything you need to turn on Redis and i
 need to execute the `java` command from a folder where you have installed the FastWFOMC project (see the installation 
 section).
 
-The cell time limit is experimental yet and does not work correctly right now. `canonicalCellGraphs` is under development
-right now (canonical version of graph isomorphism instead of a SAT way); `true` mode is a way slower as the backed for
-finding canonical version of a graph is rather prototypical and slow. 
+The cell time limit is experimental yet and does not work correctly right now. Actually, the time limit is forwarded 
+to Julia package that computes cell graphs; however, the implementation of the time limit is yet to be done. Implementing 
+this time limit in Java was much slower due to Julia's package invocation and hence did not make it into a stable version.  
+Canonical computation of cell graphs, i.e., `canonicalCellGraphs`, is another experimental setup which is left for future
+development since it boils down to computing canonical representation of a complete weighted graph which is infeasible 
+with the current prototypical backend that lacks any advanced way to handle that problem; hence the `false` value implies 
+usage of hypergraph isomorphism based on SAT.
+
+Finally, note that the current implementation does not handle cell graphs dependent on both `n` and `k`, i.e., 
+`V x E^{=k} y phi(x,y)`. Bear this in mind and run SFinder without cell graph pruning when allowing `k >= 1`.
 
 
 Miscellaneous
@@ -132,7 +149,7 @@ Miscellaneous
     -Djava.util.concurrent.ForkJoinPool.common.parallelism=10
     -Dida.sentenceSetup.debug=false
     -Dida.sentenceSetup.timeLimit=3600
-    -Dida.sentenceSetup.seed="[(V x U0(x)) ; (E x U0(x))]"
+    -Dida.sentenceSetup.seed="(V x U0(x))"
     -Dida.sentenceSetup.statesStoring=true
     -jar ./out/artefact/SFinder_jar/SFinder.jar
     > sentences.txt
@@ -189,6 +206,8 @@ direction of binary predicates, e.g.
 (E x E y B0(x, x) | ~B0(x, y))
 ```
 
+The algorithm outputs sentences as soon as possible. Hence, in case of BFS, cell graph pruning is done after each layer.
+
 DFS
 ---
 
@@ -219,7 +238,8 @@ INSTALLATION
 ============
 
 Install Java 16 or higher. Install Redis (https://redis.io/docs/getting-started/installation/) if you want to use it for
-caching cell graphs.
+caching cell graphs. You may use the fat jar `SFinder.jar` or build your own using the codes (with all the required 
+libraris in `dependencies`).
 
 Prover9
 -------
@@ -263,8 +283,7 @@ otherwise you'll end up with
 
 This implementation was developed using `Prover9 (32) version Dec-2007, Dec 2007.` To test that your version of Prover9
 works as expected, check `prover9expamples` folder with inputs and outputs. Similarly, it should be easy to extend the
-filter
-to work with E, Mace4, and others provers. The `maxProver9Seconds` sets the time limit [s] prover9 can run.
+filter to work with E, Mace4, and others provers. The `maxProver9Seconds` sets the time limit [s] prover9 can run.
 
 
 Cell graph isomorphism
@@ -316,7 +335,7 @@ If it happens that you reached the end of the mining, you will obtain
 # the search has ended!
 ```
 
-on the output. However, you can sharpen your pickaxe and continue with yet another mining!
+in the output. However, you can sharpen your pickaxe and continue with yet another mining!
 
 Happy mining!
 
@@ -344,8 +363,9 @@ cooler with every single step of development
 # info: 1: 8  (12, 32) in 0 [ 0, 0, 0, 0]; 2: 84 (96, 269) in 7 [ 0, 7, 0, 0]; 3: 709 (803, 2835) in 100 [ 0, 98, 2, 0];    # starting search with setup:	1.2.3i	SentenceSetup{maxOverallLiterals=9, maxClauses=3, maxLiteralsPerClause=3, predicates=[U0/1; B0/2], variables=[x; y], statesStoring=false, quantifiers=true, reflexiveAtoms=true, prover9Path=D:\Program Files (x86)\Prover9-Mace4\bin-win32\prover9.exe, errOut=null, permutingArguments=true, cellGraphPath=C:\data\school\development\sequence-db\fluffy-broccoli\SFinder\julia\sample_multithreaded_unskolemized.jl, debug=false, trivialConstraints=true, juliaThreads=10, decomposableComponents=true, naiveTautology=true, tautologyFilter=true, contradictionFilter=true, subsumption=true, quantifiersReducibility=true, maxK=1, maxCountingClauses=1, maxLiteralsPerCountingClause=1, doubleCountingExist=false, countingContradictionFilter=false, maxProver9Seconds=30, seed=, negations=true, isomorphicSentences=true, timeLimit=null, cellTimeLimit=3600, redis=redis://mypass@127.0.0.1:6379/, forkPollSize=10}
 # info: 1: 8  (12, 32) in 0 [ 0, 0, 0, 0]; 2: 84 (96, 269) in 6 [ 0, 6, 0, 0]; 3: 709 (803, 2835) in 83 [ 0, 81, 2, 0];     # starting search with setup:	1.3.3i	SentenceSetup{maxOverallLiterals=9, maxClauses=3, maxLiteralsPerClause=3, predicates=[U0/1; B0/2], variables=[x; y], statesStoring=false, quantifiers=true, reflexiveAtoms=true, prover9Path=D:\Program Files (x86)\Prover9-Mace4\bin-win32\prover9.exe, errOut=null, permutingArguments=true, cellGraphPath=C:\data\school\development\sequence-db\fluffy-broccoli\SFinder\julia\sample_multithreaded_unskolemized.jl, debug=false, trivialConstraints=true, juliaThreads=10, decomposableComponents=true, naiveTautology=true, tautologyFilter=true, contradictionFilter=true, subsumption=true, quantifiersReducibility=true, maxK=1, maxCountingClauses=1, maxLiteralsPerCountingClause=1, doubleCountingExist=false, countingContradictionFilter=false, maxProver9Seconds=30, seed=, negations=true, isomorphicSentences=true, timeLimit=null, cellTimeLimit=3600, redis=redis://mypass@127.0.0.1:6379/, forkPollSize=10, languageBias=true}
 
-# info: 1: 11 (12, 32) in 30 [ 0, 0, 30, 0]; 2: 86 (96, 269) in 30 [ 0, 6, 24, 0]; 3: 708 (803, 2835) in 165 [ 0, 71, 94, 0]; # starting search with setup:	1.4.5	SentenceSetup{maxOverallLiterals=9, maxClauses=3, maxLiteralsPerClause=3, predicates=[U0/1; B0/2], variables=[x; y], statesStoring=false, quantifiers=true, reflexiveAtoms=true, prover9Path=D:\Program Files (x86)\Prover9-Mace4\bin-win32\prover9.exe, errOut=null, permutingArguments=true, cellGraph=C:\data\school\development\sequence-db\fluffy-broccoli\SFinder\julia\sample_multithreaded_unskolemized.jl, debug=false, trivialConstraints=true, juliaThreads=10, decomposableComponents=true, naiveTautology=true, tautologyFilter=true, contradictionFilter=true, subsumption=true, quantifiersReducibility=true, maxK=1, maxCountingClauses=1, maxLiteralsPerCountingClause=1, doubleCountingExist=false, countingContradictionFilter=false, maxProver9Seconds=30, seed=, negations=true, isomorphicSentences=true, timeLimit=null, cellTimeLimit=3600, redis=redis://mypass@127.0.0.1:6379/, forkPollSize=10, languageBias=true, lexicographicalMatching=true}
-# info: 1: 11 (12, 32) in 20 [ 0, 0, 20, 0]; 2: 83 (96, 269) in 25 [ 0, 6, 19, 0]; 3: 644 (803, 2835) in 260 [ 0, 69, 191, 0]; # starting search with setup:	1.5.6d	0.1	SentenceSetup{maxOverallLiterals=3, maxClauses=3, maxLiteralsPerClause=3, predicates=[U0/1; B0/2], variables=[x; y], statesStoring=false, quantifiers=true, reflexiveAtoms=true, prover9Path=D:\Program Files (x86)\Prover9-Mace4\bin-win32\prover9.exe, errOut=null, permutingArguments=true, cellGraph=C:\data\school\development\sequence-db\fluffy-broccoli\SFinder\julia\sample_multithreaded_unskolemized.jl, debug=false, trivialConstraints=true, juliaThreads=10, decomposableComponents=true, naiveTautology=true, tautologyFilter=true, contradictionFilter=true, subsumption=true, quantifiersReducibility=true, maxK=1, maxCountingClauses=1, maxLiteralsPerCountingClause=1, doubleCountingExist=false, countingContradictionFilter=false, maxProver9Seconds=30, seed=, negations=true, isomorphicSentences=true, timeLimit=null, cellTimeLimit=3600, redis=redis://mypass@127.0.0.1:6379/, forkPollSize=10, languageBias=true, lexicographicalMatching=true, canonicalCellGraphs=true, fastWfOMCVersion=0.1, mode=bfs}
+# info: 1: 11 (12, 32) in 30 [ 0, 0, 30, 0]; 2: 86 (96, 269) in 30 [ 0, 6, 24, 0]; 3: 708 (803, 2835) in 165 [ 0, 71, 94, 0];   # starting search with setup:	1.4.5	SentenceSetup{maxOverallLiterals=9, maxClauses=3, maxLiteralsPerClause=3, predicates=[U0/1; B0/2], variables=[x; y], statesStoring=false, quantifiers=true, reflexiveAtoms=true, prover9Path=D:\Program Files (x86)\Prover9-Mace4\bin-win32\prover9.exe, errOut=null, permutingArguments=true, cellGraph=C:\data\school\development\sequence-db\fluffy-broccoli\SFinder\julia\sample_multithreaded_unskolemized.jl, debug=false, trivialConstraints=true, juliaThreads=10, decomposableComponents=true, naiveTautology=true, tautologyFilter=true, contradictionFilter=true, subsumption=true, quantifiersReducibility=true, maxK=1, maxCountingClauses=1, maxLiteralsPerCountingClause=1, doubleCountingExist=false, countingContradictionFilter=false, maxProver9Seconds=30, seed=, negations=true, isomorphicSentences=true, timeLimit=null, cellTimeLimit=3600, redis=redis://mypass@127.0.0.1:6379/, forkPollSize=10, languageBias=true, lexicographicalMatching=true}
+# info: 1: 11 (12, 32) in 20 [ 0, 0, 20, 0]; 2: 83 (96, 269) in 25 [ 0, 6, 19, 0]; 3: 644 (803, 2835) in 260 [ 0, 69, 191, 0];  # starting search with setup:	1.5.6d	0.1	SentenceSetup{maxOverallLiterals=3, maxClauses=3, maxLiteralsPerClause=3, predicates=[U0/1; B0/2], variables=[x; y], statesStoring=false, quantifiers=true, reflexiveAtoms=true, prover9Path=D:\Program Files (x86)\Prover9-Mace4\bin-win32\prover9.exe, errOut=null, permutingArguments=true, cellGraph=C:\data\school\development\sequence-db\fluffy-broccoli\SFinder\julia\sample_multithreaded_unskolemized.jl, debug=false, trivialConstraints=true, juliaThreads=10, decomposableComponents=true, naiveTautology=true, tautologyFilter=true, contradictionFilter=true, subsumption=true, quantifiersReducibility=true, maxK=1, maxCountingClauses=1, maxLiteralsPerCountingClause=1, doubleCountingExist=false, countingContradictionFilter=false, maxProver9Seconds=30, seed=, negations=true, isomorphicSentences=true, timeLimit=null, cellTimeLimit=3600, redis=redis://mypass@127.0.0.1:6379/, forkPollSize=10, languageBias=true, lexicographicalMatching=true, canonicalCellGraphs=true, fastWfOMCVersion=0.1, mode=bfs}
+# info: 1: 11 (12, 32) in 27 [ 0, 1, 26, 0]; 2: 83 (96, 269) in 37 [ 0, 8, 29, 0]; 3: 644 (803, 2835) in 273 [ 0, 111, 162, 0]; # starting search with setup:	1.5.10	0.1	SentenceSetup{maxOverallLiterals=9, maxClauses=3, maxLiteralsPerClause=3, predicates=[U0/1; B0/2], variables=[x; y], statesStoring=true, quantifiers=true, reflexiveAtoms=true, prover9Path=D:\Program Files (x86)\Prover9-Mace4\bin-win32\prover9.exe, errOut=null, permutingArguments=true, cellGraph=C:\data\school\development\sequence-db\fluffy-broccoli\SFinder\julia\sample_multithreaded_unskolemized.jl, debug=false, trivialConstraints=true, juliaThreads=10, decomposableComponents=true, naiveTautology=true, tautologyFilter=true, contradictionFilter=true, subsumption=true, quantifiersReducibility=true, maxK=1, maxCountingClauses=1, maxLiteralsPerCountingClause=1, doubleCountingExist=false, countingContradictionFilter=false, maxProver9Seconds=30, seed=, negations=true, isomorphicSentences=true, timeLimit=null, cellTimeLimit=3600, redis=redis://mypass@127.0.0.1:6379/, forkPollSize=10, languageBias=true, lexicographicalMatching=true, canonicalCellGraphs=false, fastWfOMCVersion=0.1, mode=bfs}
 ```
 
 
@@ -361,3 +381,6 @@ java -Xms5g -Xmx50g -Dida.sentenceSetup.timeLimit=2880 -Dida.sentenceSetup.maxOv
 The rest of experiments can be easily obtained by altering this command; e.g. `maxK=1` to get C2 experiments, 
 `trivialConstraints=false` to turn of trivial constraints feature, and so on. This will give a little smaller numbers as 
 `quantifiersReducibility` was fixed and enhanced heavily from the version 0.x.y.
+
+See the folder `experiments` that contains some experiments from the paper as well as a prototypical infrastructure to
+run further experiments and aggregate their results.

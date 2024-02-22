@@ -224,6 +224,8 @@ public class Tests {
         ClausesGenerator generator = new ClausesGenerator(null, null, null, null, null);
         JoiningFilter filter = generator.quantifiersReducibility();
         List<Triple<String, String, Boolean>> tests = Sugar.list(
+                new Triple<>("(E x B0(x, x))", "(V x V y B0(x, y))", false), // check this out!
+                new Triple<>("(V x U0(x))", "(E x U0(x))", false),
                 new Triple<>("(V x U0(x))", "(E x E y U0(x) | ~U0(x) | B0(y, y))", false),
                 new Triple<>("(V x U0(x))", "(E x B0(x, x))", true),
                 new Triple<>("(V x U0(x))", "(E x U0(x) | ~U0(x))", false),
@@ -335,6 +337,8 @@ public class Tests {
         LiteralsGenerator.generate(variables, Sugar.list(Predicate.create("U0", 1), Predicate.create("B0", 2)));
         ClausesGenerator generator = new ClausesGenerator(null, null, null, null, null);
         JoiningFilter filter = generator.trivialConstraints();
+        assert !filter.test(SentenceState.parse("(E x B0(x, x))"), Clause.parseWithQuantifier("(V x V y B0(x, y))")); // check this out!
+        assert !filter.test(SentenceState.parse("(E x U0(x))"), Clause.parseWithQuantifier("(V x U0(x))"));
         assert filter.test(SentenceState.parse(""), Clause.parseWithQuantifier("(V x B0(x, x))"));
         assert !filter.test(SentenceState.parse(""), Clause.parseWithQuantifier("(V x U0(x))"));
         assert !filter.test(SentenceState.parse(""), Clause.parseWithQuantifier("(V x ~U0(x))"));

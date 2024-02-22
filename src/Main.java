@@ -5,9 +5,7 @@ public class Main {
     public static void main(String[] args) {
         SentenceSetup setup = SentenceSetup.createFromCmd();
 
-        // TODO check Vx B0(x,x) vs Vx U0(x) in DFS version
-
-        String version = "1.5.6";
+        String version = "1.5.11";
         String fastWFOMCVersion = "0.1";
         setup.setFastWFOMCVersion(fastWFOMCVersion);
         String message = "# starting search with setup:\t" + version + "\t" + fastWFOMCVersion +"\t" + setup;

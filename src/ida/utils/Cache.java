@@ -26,12 +26,13 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Cache<R, S> {
 
-    private SoftReference<ConcurrentHashMap<R, S>> softRef;
+    private ConcurrentHashMap<R, S> refs;
 
     /**
      * Creates a new empty instance of class Cache
      */
     public Cache() {
+        refs = new ConcurrentHashMap<>();
     }
 
     /**
@@ -41,12 +42,9 @@ public class Cache<R, S> {
      * @param value the element to be stored
      */
     public void put(R key, S value) {
-        ConcurrentHashMap<R, S> map = null;
-        if (softRef == null || (map = softRef.get()) == null) {
-            map = new ConcurrentHashMap<R, S>();
-            softRef = new SoftReference<ConcurrentHashMap<R, S>>(map);
+        synchronized (refs) {
+            refs.putIfAbsent(key, value);
         }
-        map.put(key, value);
     }
 
     /**
@@ -56,19 +54,15 @@ public class Cache<R, S> {
      * @return the element associated to the key or null
      */
     public S get(R key) {
-        ConcurrentHashMap<R, S> map = null;
-        if (softRef == null || (map = softRef.get()) == null) {
-            return null;
-        }
-        return map.get(key);
+        return refs.get(key);
     }
 
     /**
      * Clears this cache
      */
     public void clear() {
-        if (this.softRef != null) {
-            this.softRef.clear();
+        if (this.refs != null) {
+            this.refs.clear();
         }
     }
 }
